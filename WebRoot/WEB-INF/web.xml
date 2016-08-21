@@ -4,6 +4,11 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
 	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
 	http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+
+<!-- ======================================================================================
+====	1. web.xml加载顺序为：context-param -> listener -> filter -> servlet				===
+======================================================================================= -->
+	
 	<display-name>SSM</display-name>
 
 	<!-- 应用名称, 同一tomcat下应用不能同名. -->
@@ -20,10 +25,115 @@
 		<param-value>classpath:applicationContext*.xml</param-value>
 	</context-param>
 
+
+	<!-- ==========================listener 定义区 BEGIN====================== -->
+
+	<!-- spring的log4j的listener -->
 	<listener>
-		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+		<listener-class>
+			org.springframework.web.util.Log4jConfigListener
+		</listener-class>
 	</listener>
 
+	<!-- spring上下文的listener -->
+	<listener>
+		<listener-class>
+			org.springframework.web.context.ContextLoaderListener
+		</listener-class>
+	</listener>
+
+	<!-- Spring 刷新Introspector防止内存泄露listener -->
+	<listener>
+		<listener-class>
+			org.springframework.web.util.IntrospectorCleanupListener
+		</listener-class>
+	</listener>
+
+
+	<!-- ==========================filter 配置区域 BEGIN========================= -->
+
+	<!-- WebStatFilter用于采集web-jdbc关联监控的数据(DruidWebStatFilter) -->
+	<filter>
+		<filter-name>DruidWebStatFilter</filter-name>
+		<filter-class>com.alibaba.druid.support.http.WebStatFilter</filter-class>
+		<!-- 排除一些不必要的url, 比如 .js, /jslib/等等. -->
+		<init-param>
+			<param-name>exclusions</param-name>
+			<param-value>*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*</param-value>
+		</init-param>
+		<!-- session统计功能开关(sessionStatEnable) -->
+		<init-param>
+			<param-name>sessionStatEnable</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<!-- sessionStatMaxCount默认是1000个, 你可以按需要进行配置. -->
+		<init-param>
+			<param-name>sessionStatMaxCount</param-name>
+			<param-value>1000</param-value>
+		</init-param>
+		<!-- 获得当前session的用户(principalSessionName) -->
+		<!-- 根据需要, 把其中的xxx.user修改为你user信息保存在session中的sessionName. -->
+		<!-- 注: 如果你session中保存的是非string类型的对象, 需要重载toString方法.
+		<init-param>
+			<param-name>principalSessionName</param-name>
+			<param-value>xxx.user</param-value>
+		</init-param> -->
+		<!-- 获得当前cookie的用户(principalSessionName)
+		<init-param>
+			<param-name>principalCookieName</param-name>
+			<param-value>xxx.user</param-value>
+		</init-param> -->
+		<!-- 支持查看单个url调用的sql(profileEnable) -->
+		<init-param>
+			<param-name>profileEnable</param-name>
+			<param-value>true</param-value>
+		</init-param>
+	</filter>
+	<filter-mapping>
+		<filter-name>DruidWebStatFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<!-- ===========================filter 配置区域 END========================== -->
+
+	<!-- ===========================servlet 定义区 BEGIN======================= -->
+
+	<!-- Druid StatViewServlet用于展示Druid的统计信息(DruidStatView) -->
+	<servlet>
+		<servlet-name>DruidStatView</servlet-name>
+		<servlet-class>com.alibaba.druid.support.http.StatViewServlet</servlet-class>
+		<!-- 关闭重置统计数据功能(resetEnable) -->
+		<init-param>
+			<param-name>resetEnable</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<!-- 用户名(loginUsername) -->
+		<init-param>
+			<param-name>loginUsername</param-name>
+			<param-value>admin</param-value>
+		</init-param>
+		<!-- 密码(loginPassword) -->
+		<init-param>
+			<param-name>loginPassword</param-name>
+			<param-value>druid</param-value>
+		</init-param>
+
+		<!-- 用于配置Druid数据库连接池的监控程序, 正式发布时需要限定可访问监控页面的IP.
+		<init-param>
+			<param-name>deny</param-name>
+			<param-value>192.168.1.57</param-value>
+		</init-param>
+		<init-param>
+			<param-name>allow</param-name>
+			<param-value>128.242.127.4</param-value>
+		</init-param> -->
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>DruidStatView</servlet-name>
+		<url-pattern>/druid/*</url-pattern>
+	</servlet-mapping>
+
+	<!-- springmvc -->
 	<servlet>
 		<servlet-name>springmvc</servlet-name>
 		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
@@ -36,6 +146,8 @@
 		<servlet-name>springmvc</servlet-name>
 		<url-pattern>*.do</url-pattern>
 	</servlet-mapping>
+
+	<!-- ===========================servlet 定义区 END======================= -->
 
 	<welcome-file-list>
 		<welcome-file>index.jsp</welcome-file>

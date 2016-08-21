@@ -15,29 +15,91 @@
 
 	<bean id = "userService" class="com.ssm.service.impl.UserServiceImpl"></bean>
 
-	<context:property-placeholder location="classpath:jdbc.properties" />
+	<context:property-placeholder location="classpath:sys_config.properties" />
 
-	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
-		<property name="jdbcUrl" value="${jdbc.url}"></property>
-		<property name="driverClass" value="${jdbc.driver}"></property>
-		<property name="user" value="${jdbc.username}"></property>
-		<property name="password" value="${jdbc.password}"></property>
-		<!-- 其他配置 -->
-		<!--初始化时获取三个连接，取值应在minPoolSize与maxPoolSize之间。Default: 3 -->
-		<property name="initialPoolSize" value="3"></property>
-		<!--连接池中保留的最小连接数。Default: 3 -->
-		<property name="minPoolSize" value="3"></property>
-		<!--连接池中保留的最大连接数。Default: 15 -->
-		<property name="maxPoolSize" value="5"></property>
-		<!--当连接池中的连接耗尽的时候c3p0一次同时获取的连接数。Default: 3 -->
-		<property name="acquireIncrement" value="3"></property>
-		<!-- 控制数据源内加载的PreparedStatements数量。如果maxStatements与maxStatementsPerConnection均为0，则缓存被关闭。Default: 
-			0 -->
-		<property name="maxStatements" value="8"></property>
-		<!--maxStatementsPerConnection定义了连接池内单个连接所拥有的最大缓存statements数。Default: 0 -->
-		<property name="maxStatementsPerConnection" value="5"></property>
-		<!--最大空闲时间,1800秒内未使用则连接被丢弃。若为0则永不丢弃。Default: 0 -->
-		<property name="maxIdleTime" value="1800"></property>
+	<!-- Druid内置提供StatFilter, 用于统计监控信息. -->
+	<bean id="stat-filter" class="com.alibaba.druid.filter.stat.StatFilter">
+		<!-- StatFilter属性: sql合并配置mergeSql -->
+		<property name="mergeSql" value="true" />
+		<!-- StatFilter属性: 定义sql速度慢的标准. 单位: 毫秒(ms) 缺省值-3000 -->
+		<property name="slowSqlMillis" value="3000" />
+		<!-- StatFilter属性: 日志打印执行速度慢的sql -->
+		<property name="logSlowSql" value="true" />
+	</bean>
+
+	<!-- Druid的log4j拦截配置, 输出sql -->
+	<bean id="log-filter" class="com.alibaba.druid.filter.logging.Log4jFilter">
+		<!-- 输出可执行的SQL -->
+		<property name="statementExecutableSqlLogEnable" value="true" />
+		<!-- 输出所有ResultSet相关的日志log -->
+		<property name="resultSetLogEnabled" value="false" />
+		<!-- 输出所有DataSource相关的日志log -->
+		<property name="dataSourceLogEnabled" value="false" />
+		<!-- 输出所有Statement相关的日志log -->
+		<property name="statementLogEnabled" value="false" />
+	</bean>
+
+	<!-- Druid DataSource -->
+	<bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+		<property name="driverClassName" value="${db.connection.driver_class}"/>
+		<!-- 基本属性 url、user、password -->
+		<property name="url" value="${db.connection.url}"/>
+		<property name="username" value="${db.connection.userName}" />
+		<property name="password" value="${db.connection.password}" />
+
+		<!-- 连接池初始化数据库连接个数(initialSize) -->
+		<property name="initialSize" value="5" />
+		<!-- 最小活跃连接数(minIdle) -->
+		<property name="minIdle" value="5" />
+		<!-- 最大活跃连接数(maxActive) -->
+		<property name="maxActive" value="20" />
+
+		<!-- 配置获取连接等待超时的时间(maxWait), 单位: 毫秒(ms) -->
+		<property name="maxWait" value="60000" />
+
+		<!-- 配置间隔多久才进行一次检测(timeBetweenEvictionRunsMillis), 检测需要关闭的空闲连接, 单位: 毫秒(ms) -->
+		<property name="timeBetweenEvictionRunsMillis" value="60000" />
+
+		<!-- 配置一个连接在池中的最小生存时间(minEvictableIdleTimeMillis), 单位: 毫秒(ms) -->
+		<property name="minEvictableIdleTimeMillis" value="300000" />
+
+		<property name="validationQuery" value="select su.id from sys_user su" />
+		<property name="testWhileIdle" value="true" />
+		<property name="testOnBorrow" value="false" />
+		<property name="testOnReturn" value="false" />
+
+		<!-- PSCach, Oracle配置为true, mysql配置为false -->
+		<property name="poolPreparedStatements" value="false" />
+		<property name="maxPoolPreparedStatementPerConnectionSize" value="20" />
+
+
+		<!-- Druid 别名配置是 -->
+		<!-- <property name="filters" value="stat, log4j" /> -->
+		<property name="proxyFilters">
+			<list>
+				<ref bean="stat-filter" />
+				<ref bean="log-filter" />
+			</list>
+		</property>
+		<!-- ==============================Druid 简化配置 BEGIN========================== -->
+		<!-- <property name="filters" value="stat,log4j" /> -->
+		<!-- 配置公用监控数据(useGlobalDataSourceStat) -->
+		<!-- <property name="useGlobalDataSourceStat" value="false" /> -->
+		<!-- StatFilter属性(mergeSql): sql合并配置mergeSql -->
+		<!-- StatFilter属性(slowSqlMillis): 定义sql速度慢的标准. 单位: 毫秒(ms) 缺省值-3000 -->
+		<!-- StatFilter属性(logSlowSql): 日志打印执行速度慢的sql -->
+		<!-- <property name="connectionProperties" 
+			value="druid.stat.mergeSql=true, druid.stat.slowSqlMillis=3000, druid.stat.logSlowSql=true" /> -->
+
+		<!-- 连接泄漏监测(removeAbandoned), 关闭长时间不使用的连接. -->
+		<!-- 配置removeAbandoned对性能会有一些影响, 建议怀疑存在泄漏之后再打开. -->
+		<property name="removeAbandoned" value="false" />
+		<!-- 配置时间限制, 单位-分钟(minute) -->
+		<property name="removeAbandonedTimeout" value="1800" />
+		<!-- 关闭abanded连接时输出错误日志(logAbandoned) -->
+		<property name="logAbandoned" value="true" />
+
+		<!-- ===============================Druid 简化配置 END=========================== -->
 	</bean>
 	
 	<!-- sqlSessionFactory -->
@@ -52,6 +114,23 @@
 	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="dataSource" />
 	</bean>
+
+	<!-- Druid Spring 关联监控配置(druid-stat-interceptor) advice -->
+	<bean id="druid-stat-interceptor" class="com.alibaba.druid.support.spring.stat.DruidStatInterceptor" />
+	<!-- Druid 方法名正则匹配拦截配置切点(druid-stat-pointcut) pointcut -->
+	<bean id="druid-stat-pointcut" class="org.springframework.aop.support.JdkRegexpMethodPointcut" scope="prototype">
+		<property name="patterns">
+			<list>
+				<value>com.dengxj.zjulaw2016.service.*</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 以AspectJ方式 定义AOP -->
+	<aop:config proxy-target-class="true">
+		<!-- Druid Spring 监测AOP -->
+		<aop:advisor advice-ref="druid-stat-interceptor" pointcut-ref="druid-stat-pointcut" />
+	</aop:config>
 
 	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
 
