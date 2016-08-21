@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.ssm.mapper.UserMapper" >
+
+	<select id="getUserById" resultType="com.ssm.domain.User">
+		select su.id as userId, su.user_name as userName from sys_user su where su.id = #{id}
+	</select>
+
+	<select id="getUserList" resultType="com.ssm.domain.User">
+		select su.id as userId, su.user_name as userName from sys_user su
+	</select>
+</mapper>
